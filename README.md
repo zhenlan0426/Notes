@@ -1,1 +1,1 @@
-# Notes
+Notes on CV/NLP
