@@ -108,7 +108,30 @@ def collate_creator(pad_token_id,convert_dtype,device,max_len=None):
             out = {k:v.to(device).to(convert_dtype(k)) for k,v in out.items()}
             return out
     return collate
+# set config.output_hidden_states=True
+class weightedAvg(nn.Module):
+    def __init__(self,numLayers,sigma=10):
+        self.weight = nn.Parameter(torch.rand(numLayers)/sigma)
+    def forward(self,x):
+        return torch.matmul(x,nn.functional.softmax(self.weight))
 
+class weightedAvgExtract(nn.Module):
+    def __init__(self,extract_element,numLayers=None,sigma=10):
+        self.extract_element = extract_element
+        if numLayers is None:
+            self.weightAvg = None
+        else:
+            self.weightAvg = weightedAvg(numLayers,sigma)
+            
+    def forward(self,out):
+        if self.weightAvg is None:
+            out = out[0][:,:self.extract_element].squeeze()
+        else:
+            out = torch.stack(out[3],-1) # N,L,d,layers
+            out = out[:,:self.extract_element].squeeze()
+            out = self.weightAvg(out)
+        return out
+    
 # special_tokens = [torch.tensor([-1,-2], dtype=torch.int16), torch.tensor([-3], dtype=torch.int16)]         
 # budget = [0.2,0.3,0.5]
 # max_len = 120
